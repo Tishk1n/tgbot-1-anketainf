@@ -18,7 +18,7 @@ import markups as mp
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
-db = Database('database.db')
+db = Database('db.db')
 
 
 markdown = """

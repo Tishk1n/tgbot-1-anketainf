@@ -1,5 +1,156 @@
 import sqlite3
-import time
+
+db_file = "db.db"
+def create_all(db_file):
+    connection = sqlite3.connect(db_file)
+    cursor = connection.cursor()
+
+    with connection:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY, 
+                user_id INTEGER, 
+                anketa INTEGER DEFAULT 0 NOT NULL, 
+                pay_d TEXT, 
+                adres TEXT, 
+                time_live TEXT, 
+                osnovanie TEXT, 
+                education TEXT, 
+                family TEXT, 
+                brak TEXT, 
+                cosual TEXT, 
+                e_mail TEXT, 
+                phone_number TEXT, 
+                cnulc TEXT, 
+                zan TEXT, 
+                card TEXT,
+                start_work TEXT,
+                start_work2 TEXT,
+                dolg TEXT,
+                dohod TEXT,
+                dohod2 TEXT,
+                credit TEXT,
+                credit_card TEXT,
+                limi TEXT,
+                car TEXT,
+                cob TEXT
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS down_card (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER,
+                name TEXT,
+                adres_company TEXT,
+                years TEXT,
+                saits TEXT,
+                number_com TEXT,
+                count TEXT,
+                cfera TEXT
+            )
+        """)
+
+def test(db_file):
+    db = Database(db_file)
+    db.add(0)
+    print(db.examination(0))
+
+    db.add_anketa(0, 0)
+    print(db.user_anketa(0))
+
+    db.add_pay_d(0, "pay_d")
+    print(db.user_pay_d(0))
+
+    db.add_adres(0, "adress")
+    print(db.user_adres(0))
+
+    db.add_time_live(0, "time_live")
+    print(db.user_time_live(0))
+
+    db.add_osnovanie(0, "osnovanie")
+    print(db.user_osnovanie(0))
+
+    db.add_education(0, "education")
+    print(db.user_education(0))
+
+    db.add_family(0, "family")
+    print(db.user_family(0))
+
+    db.add_brak(0, "user_brak")
+    print(db.user_brak(0))
+
+    db.add_cosual(0, "cosual")
+    print(db.user_cosual(0))
+    
+    db.add_e_mail(0, "e_mail")
+    print(db.user_e_mail(0))
+    
+    db.add_phone_number(0, "phone_number")
+    print(db.user_phone_number(0))
+
+    db.add_cnulc(0, "cnulc")
+    print(db.user_cnulc(0))
+
+    db.add_zan(0, "zan")
+    print(db.user_zan(0))
+
+    db.add_card(0, "card")
+    print(db.user_card(0))
+
+    db.add_com(0)
+    print(db.examination_com(0))
+
+    db.add_name(0, "name")
+    print(db.user_name(0))
+
+    db.add_adres_company(0, "adres_company")
+    print(db.user_adres_company(0))
+
+    db.add_years(0, "years")
+    print(db.user_years(0))
+
+    db.add_saits(0, "saits")
+    print(db.user_sait(0))
+
+    db.add_number_com(0, "number_com")
+    print(db.user_number_com(0))
+
+    db.add_count(0, "count")
+    print(db.user_count(0))
+
+    db.add_cfera(0, "cfera")
+    print(db.user_cfera(0))
+
+    db.add_start_work(0, "start_work")
+    print(db.user_start_work(0))
+
+    db.add_start_work2(0, "start_work2")
+    print(db.user_start_work2(0))
+
+    db.add_dolg(0, "dolg")
+    print(db.user_dolg(0))
+
+    db.add_dohod(0, "dohod")
+    print(db.user_dohod(0))
+
+    db.add_dohod2(0, "dohod2")
+    print(db.user_dohod2(0))
+
+    db.add_credit(0, "credit")
+    print(db.user_credit(0))
+
+    db.add_credit_card(0, "credit_card")
+    print(db.user_credit_card(0))
+
+    db.add_limi(0, "limi")
+    print(db.user_limi(0))
+
+    db.add_car(0, "car")
+    print(db.user_car(0))
+
+    db.add_cob(0, "cob")
+    print(db.user_cob(0))
+
 class Database:
     def __init__(self, db_file):
         self.connection = sqlite3.connect(db_file)
@@ -15,13 +166,10 @@ class Database:
         with self.connection:
             return self.connection.execute("INSERT INTO users ('user_id') VALUES (?)", (user_id,))
 
-
     # _____________________________Активация анкеты_________________________--
-
     def user_anketa(self, user_id):
         with self.connection:
             res = self.cursor.execute("SELECT anketa FROM users WHERE user_id = ?", (user_id,)).fetchmany(1)
-            print(res)
             return int(res[0][0])
 
     def add_anketa(self, user_id, anketa):
@@ -91,7 +239,6 @@ class Database:
         with self.connection:
             return self.cursor.execute("UPDATE users SET brak= ? WHERE user_id = ?", (brak, user_id))
 
-
     def user_cosual(self, user_id):
         with self.connection:
             res = self.cursor.execute("SELECT cosual FROM users WHERE user_id = ?", (user_id,)).fetchmany(1)
@@ -145,8 +292,6 @@ class Database:
     def add_card(self, user_id, card):
         with self.connection:
             return self.cursor.execute("UPDATE users SET card= ? WHERE user_id = ?", (card, user_id))
-
-
 
     #_____________________________COMPANY___________________________
 
@@ -316,4 +461,6 @@ class Database:
             return self.cursor.execute("UPDATE users SET cob= ? WHERE user_id = ?", (cob, user_id))
 
 
-
+if __name__ == '__main__':
+    create_all(db_file)
+    #test(db_file)
