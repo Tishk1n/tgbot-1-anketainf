@@ -6,12 +6,14 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher, FSMContext
 from aiogram.utils import executor, exceptions
+from aiogram.types import ReplyKeyboardRemove, \
+    ReplyKeyboardMarkup, KeyboardButton, \
+    InlineKeyboardMarkup, InlineKeyboardButton
 from sqlite_db import Database
 from aiogram.dispatcher.filters.state import StatesGroup, State
 import config
 import logging
 import markups as mp
-
 
 
 
@@ -58,16 +60,23 @@ class anketa(StatesGroup):
     car = State()
     cob = State()
 
+startbutton = KeyboardButton('Заполнить Анкету ✓')
+startkb = ReplyKeyboardMarkup(resize_keyboard=True,one_time_keyboard=True).add(startbutton)
+
+
 
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
+    await message.answer("Привет!", reply_markup=startkb)
+
+@dp.message_handler(text=['Заполнить Анкету ✓'])
+async def start1(message: types.Message):
     if not db.examination(message.from_user.id):
         db.add(message.from_user.id)
     if not db.examination_com(message.from_user.id):
         db.add_com(message.from_user.id)
     await message.answer('Привет! Я помощник Лилии, задам тебе несколько вопросов, чтобы заполнить твою анкету клиента.\n'
                          'Пожалуйста, отвечай на все  вопросы в одном сообщении, потому что после каждого твоего ответа автоматически задается следующий вопрос', reply_markup=mp.start)
-
 
 @dp.callback_query_handler(text=['start'])
 async def anketa_start(call: types.CallbackQuery):
@@ -79,8 +88,22 @@ async def anketa_start(call: types.CallbackQuery):
         await bot.send_message(call.from_user.id, 'Загрузите фотографии всех страниц паспорта\n'
                                               'P.S: Когда загрузите все фото - нажмите кнопку "ЗАКОНЧИЛ"', reply_markup=mp.continue_menu)
         await anketa.photo_pasport.set()
-    else:
+    elif user_anketa == 1:
         await bot.send_message(call.from_user.id, 'Ты уже заполнил свою анкету')
+
+@dp.callback_query_handler(text=['start1'])
+async def anketa_start1(call: types.CallbackQuery):
+    user_anketa = db.user_anketa(call.from_user.id)
+    if user_anketa == 0:
+        db.add_anketa(call.from_user.id, user_anketa + 1)
+        await bot.send_message(call.from_user.id, 'Сейчас заполняем раздел Личная информация')
+        await asyncio.sleep(3)
+        await bot.send_message(call.from_user.id, 'Загрузите фотографии всех страниц паспорта\n'
+                                              'P.S: Когда загрузите все фото - нажмите кнопку "ЗАКОНЧИЛ"', reply_markup=mp.continue_menu)
+        await anketa.photo_pasport.set()
+    elif user_anketa == 1:
+        await bot.send_message(call.from_user.id, 'Ты уже заполнил свою анкету')
+
 
 @dp.message_handler(content_types=['photo'], state=anketa.photo_pasport)
 async def photo(message: types.Message, state: FSMContext):

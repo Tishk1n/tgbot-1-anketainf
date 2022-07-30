@@ -6,7 +6,8 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardBut
 
 
 
-inline_btn_start = InlineKeyboardButton('Перейти к вопросам', callback_data='start', )
+inline_btn_start = InlineKeyboardButton('Перейти к вопросам', callback_data='start')
+inline_btn_otmena = InlineKeyboardButton('Отмена', callback_data='start1')
 
 inline_btn_ndfl = InlineKeyboardButton("2-НДФЛ", callback_data='ndfl')
 inline_btn_pfr = InlineKeyboardButton("Выписка из ПФР", callback_data='pfr')
@@ -15,6 +16,7 @@ inline_btn_srp = InlineKeyboardButton("Справка о размере пенс
 inline_btn_spfb = InlineKeyboardButton("Справка по форме банка", callback_data='spfb')
 inline_btn_vph = InlineKeyboardButton("Выписка из похозяйственной книги", callback_data='vph')
 inline_btn_notpay = InlineKeyboardButton("Без подтверждения", callback_data='notpay')
+
 
 inline_btn_cob = InlineKeyboardButton("Собственность", callback_data='cob')
 inline_btn_coz = InlineKeyboardButton("Социальный найм", callback_data='coz')
@@ -34,6 +36,7 @@ inline_btn_rm = InlineKeyboardButton("Российское МВА", callback_dat
 inline_btn_umba = InlineKeyboardButton("Иностранное МВА", callback_data='umba')
 
 
+
 inline_btn_jz = InlineKeyboardButton("Женат/замужем", callback_data='jz')
 inline_btn_gr = InlineKeyboardButton("Гражданский брак", callback_data='gr')
 inline_btn_hz = InlineKeyboardButton("Холост/не замужем", callback_data='hz')
@@ -44,6 +47,7 @@ inline_btn_vdo = InlineKeyboardButton("Вдовец/вдова", callback_data='
 inline_btn_yes = InlineKeyboardButton("Есть", callback_data='yes')
 inline_btn_no = InlineKeyboardButton("Нет", callback_data='no')
 inline_btn_bzc = InlineKeyboardButton("Будет заключен до сделки", callback_data='bzc')
+
 
 inline_btn_work = InlineKeyboardButton("Работает", callback_data='work')
 inline_btn_nowork = InlineKeyboardButton("Не работает", callback_data='nowork')
@@ -60,6 +64,7 @@ inline_btn_ip = InlineKeyboardButton("ИП", callback_data='ip')
 
 inline_btn_down = InlineKeyboardButton("Загрузить карточку", callback_data='down')
 inline_btn_vvesti = InlineKeyboardButton("Ввести вручную", callback_data='vvesti')
+
 
 inline_btn_fin = InlineKeyboardButton("Посмотреть анкету", callback_data='fin')
 
@@ -81,6 +86,7 @@ pray_d = InlineKeyboardMarkup().row(ndfl)\
     .row(spfb)\
     .row(vph)\
     .row(notpay)\
+    .row(inline_btn_otmena)\
 
 cob = InlineKeyboardButton("Собственность", callback_data='cob1')
 coz = InlineKeyboardButton("Социальный найм", callback_data='coz1')
@@ -95,6 +101,7 @@ osnva = InlineKeyboardMarkup().row(cob)\
     .row(voi)\
     .row(jr)\
     .row(com)\
+    .row(inline_btn_otmena)\
 
 
 
@@ -118,6 +125,7 @@ educ_c = InlineKeyboardMarkup().row(uc)\
     .row(nuvc)\
     .row(rm)\
     .row(umba)\
+    .row(inline_btn_otmena)\
 
 
 jz = InlineKeyboardButton("Женат/замужем", callback_data='jz1')
@@ -131,7 +139,7 @@ fam1 = InlineKeyboardMarkup().row(jz)\
     .row(hz)\
     .row(raz)\
     .row(vdo)\
-
+    .row(inline_btn_otmena)\
 
 yes = InlineKeyboardButton("Есть", callback_data='yes1')
 no = InlineKeyboardButton("Нет", callback_data='no1')
@@ -163,6 +171,7 @@ zan1 = InlineKeyboardMarkup().row(kom)\
     .row(naym)\
     .row(pencioner)\
     .row(ip)\
+    .row(inline_btn_otmena)\
 
 
 
@@ -191,6 +200,7 @@ zan = InlineKeyboardMarkup().row(inline_btn_kom)\
     .row(inline_btn_naym)\
     .row(inline_btn_pencioner)\
     .row(inline_btn_ip)\
+    .row(inline_btn_otmena)\
 
 cosual_c = InlineKeyboardMarkup().row(inline_btn_work)\
     .row(inline_btn_nowork)\
@@ -209,6 +219,7 @@ corective = InlineKeyboardMarkup().row(inline_btn_cor)
 corective_c = InlineKeyboardMarkup().row(inline_btn_cor, inline_btn_cor_c)
 
 start = InlineKeyboardMarkup().row(inline_btn_start)
+otmena = InlineKeyboardMarkup().row(inline_btn_otmena)
 
 
 pay_d = InlineKeyboardMarkup().row(inline_btn_ndfl)\
@@ -218,6 +229,7 @@ pay_d = InlineKeyboardMarkup().row(inline_btn_ndfl)\
     .row(inline_btn_spfb)\
     .row(inline_btn_vph)\
     .row(inline_btn_notpay)\
+    .row(inline_btn_otmena)
 
 osnv = InlineKeyboardMarkup().row(inline_btn_cob)\
     .row(inline_btn_coz)\
@@ -225,6 +237,7 @@ osnv = InlineKeyboardMarkup().row(inline_btn_cob)\
     .row(inline_btn_voi)\
     .row(inline_btn_jr)\
     .row(inline_btn_com)\
+    .row(inline_btn_otmena)
 
 educ = InlineKeyboardMarkup().row(inline_btn_uc)\
     .row(inline_btn_2v)\
@@ -235,21 +248,24 @@ educ = InlineKeyboardMarkup().row(inline_btn_uc)\
     .row(inline_btn_nuvc)\
     .row(inline_btn_rm)\
     .row(inline_btn_umba)\
+    .row(inline_btn_otmena)
 
 fam = InlineKeyboardMarkup().row(inline_btn_jz)\
     .row(inline_btn_gr)\
     .row(inline_btn_hz)\
     .row(inline_btn_raz)\
     .row(inline_btn_vdo)\
+    .row(inline_btn_otmena)
 
 bra = InlineKeyboardMarkup().row(inline_btn_yes)\
     .row(inline_btn_no)\
-    .row(inline_btn_bzc)
+    .row(inline_btn_bzc)\
+    .row(inline_btn_otmena)
 
 
 
 
 
 
-continue_menu = InlineKeyboardMarkup().row(inline_btn_stop)
+continue_menu = InlineKeyboardMarkup().row(inline_btn_stop).row(inline_btn_otmena)
 
