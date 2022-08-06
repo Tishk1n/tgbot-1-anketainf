@@ -6,12 +6,14 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher, FSMContext
 from aiogram.utils import executor, exceptions
+from aiogram.types import ReplyKeyboardRemove, \
+    ReplyKeyboardMarkup, KeyboardButton, \
+    InlineKeyboardMarkup, InlineKeyboardButton
 from sqlite_db import Database
 from aiogram.dispatcher.filters.state import StatesGroup, State
 import config
 import logging
 import markups as mp
-
 
 
 
@@ -58,16 +60,40 @@ class anketa(StatesGroup):
     car = State()
     cob = State()
 
+startbutton = KeyboardButton('Заполнить Анкету ✓')
+startkb = ReplyKeyboardMarkup(resize_keyboard=True,one_time_keyboard=True).add(startbutton)
+
+adminkb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+butt1 = types.KeyboardButton(text = "Посмотреть анкеты")
+butt2 = types.KeyboardButton(text = "Добавить администратора")
+butt3 = types.KeyboardButton(text = "Открытая линия")
+
+adminkb.add(butt1).add(butt2)
+adminkb.add(butt3)
+
+
+
+test = InlineKeyboardButton("Принять", callback_data='prinyal')
+test2 = InlineKeyboardButton("Отклонить", callback_data='otklonil')
+test1 = InlineKeyboardMarkup().row(mp.inline_btn_fin2, test, test2)
+
+
+@dp.message_handler(text=['/admin'])
+async def admin(message: types.Message):
+    await message.answer("Ваша админ панель:", reply_markup=adminkb)
 
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
+    await message.answer("Привет!", reply_markup=startkb)
+
+@dp.message_handler(text=['Заполнить Анкету ✓'])
+async def start1(message: types.Message):
     if not db.examination(message.from_user.id):
         db.add(message.from_user.id)
     if not db.examination_com(message.from_user.id):
         db.add_com(message.from_user.id)
     await message.answer('Привет! Я помощник Лилии, задам тебе несколько вопросов, чтобы заполнить твою анкету клиента.\n'
                          'Пожалуйста, отвечай на все  вопросы в одном сообщении, потому что после каждого твоего ответа автоматически задается следующий вопрос', reply_markup=mp.start)
-
 
 @dp.callback_query_handler(text=['start'])
 async def anketa_start(call: types.CallbackQuery):
@@ -79,8 +105,22 @@ async def anketa_start(call: types.CallbackQuery):
         await bot.send_message(call.from_user.id, 'Загрузите фотографии всех страниц паспорта\n'
                                               'P.S: Когда загрузите все фото - нажмите кнопку "ЗАКОНЧИЛ"', reply_markup=mp.continue_menu)
         await anketa.photo_pasport.set()
-    else:
+    elif user_anketa == 1:
         await bot.send_message(call.from_user.id, 'Ты уже заполнил свою анкету')
+
+@dp.callback_query_handler(text=['start1'])
+async def anketa_start1(call: types.CallbackQuery):
+    user_anketa = db.user_anketa(call.from_user.id)
+    if user_anketa == 0:
+        db.add_anketa(call.from_user.id, user_anketa + 1)
+        await bot.send_message(call.from_user.id, 'Сейчас заполняем раздел Личная информация')
+        await asyncio.sleep(3)
+        await bot.send_message(call.from_user.id, 'Загрузите фотографии всех страниц паспорта\n'
+                                              'P.S: Когда загрузите все фото - нажмите кнопку "ЗАКОНЧИЛ"', reply_markup=mp.continue_menu)
+        await anketa.photo_pasport.set()
+    elif user_anketa == 1:
+        await bot.send_message(call.from_user.id, 'Ты уже заполнил свою анкету')
+
 
 @dp.message_handler(content_types=['photo'], state=anketa.photo_pasport)
 async def photo(message: types.Message, state: FSMContext):
@@ -630,6 +670,16 @@ async def sd(message: types.Message, state: FSMContext):
     await message.answer('Анкета готова', reply_markup=mp.fin)
     await state.finish()
 
+@dp.callback_query_handler(text=['prinyal'])
+async def fin(call: types.CallbackQuery):
+    ud = call.from_user.id
+    await bot.send_message(ud, "Ваша анкета принята")
+
+@dp.callback_query_handler(text=['otklonil'])
+async def fin(call: types.CallbackQuery):
+    ud = call.from_user.id
+    await bot.send_message(ud, "Ваша анкета отклонена, проверьте правильность заполнения")
+
 @dp.callback_query_handler(text=['fin'])
 async def fin(call: types.CallbackQuery):
     ud = call.from_user.id
@@ -830,180 +880,184 @@ async def fin(call: types.CallbackQuery):
                                        f'\n'
                                        f'22) Недвижимость\и: {cob}', reply_markup=mp.corective_c)
 
-
-        await bot.send_message(config.ADMIN, 'Анкета пользователя: [{} {}](tg://user?id={})'.format(call.from_user.first_name,
+        await bot.send_message(config.CHANNEL_ID, 'Анкета пользователя: [{} {}](tg://user?id={})'.format(call.from_user.first_name,
                                                                                           call.from_user.last_name,
                                                                                           call.from_user.id),
-                               disable_web_page_preview=True, parse_mode="Markdown")
+                               disable_web_page_preview=True, parse_mode="Markdown", reply_markup=test1)                       
+                
+
+        @dp.callback_query_handler(text=['fin2'])
+        async def fin2(call: types.CallbackQuery):
+            await bot.send_message(config.CHANNEL_ID, 'Анкета пользователя: [{} {}](tg://user?id={})'.format(call.from_user.first_name,
+                                                                                            call.from_user.last_name,
+                                                                                            call.from_user.id),
+                                disable_web_page_preview=True, parse_mode="Markdown")
 
 
-        files = os.listdir(f'images{ud}')
-        for i in files:
-            await bot.send_message(config.ADMIN, 'Фото паспорта:')
-            photo = open(f'images{ud}/{i}', 'rb')
-            await bot.send_photo(config.ADMIN, photo)
-        await bot.send_message(config.ADMIN, '___________________________\n')
-        if card == "document":
-            file = os.listdir(f'card{ud}')
-            for i in file:
-                photo = open(f'card{ud}/{i}', 'rb')
-                await bot.send_message(config.ADMIN, 'Карточка компании:')
-                await bot.send_photo(config.ADMIN, photo)
-                await bot.send_message(config.ADMIN, '___________________________\n')
-                await bot.send_message(config.ADMIN, f'1) Способ подтверждения дохода: {pay_d}\n'
-                                       f'\n'
-                                       f'2) Адрес фактического проживания: {adres}\n'
-                                       f'\n'
-                                       f'3) Проживаете по этому адресу: {time_live}\n'
-                                       f'\n'
-                                       f'4) Основание проживания: {osnovanie}\n'
-                                       f'\n'
-                                       f'5) Образование: {education}\n'
-                                       f'\n'
-                                       f'6) Семейное положение: {family}\n'
-                                       f'\n'
-                                       f'7) Брачный контракт: {brak}\n'
-                                       f'\n'
-                                       f'8) Социальный статус супруга(-и): {cosual}\n'
-                                       f'\n'
-                                       f'9) Электронная почта: {e_mail}\n'
-                                       f'\n'
-                                       f'10) Номер телефона: {phone_number}\n'
-                                       f'\n'
-                                       f'11) Номер СНИЛС: {cnulc}\n'
-                                       f'\n'
-                                       f'12) Тип занятости: {zan}\n'
-                                       f'\n'
-                                       f'13) Дата начала работы в указанной организации: {start_work}\n'
-                                       f'\n'
-                                       f'14) Дата начала своей трудовой деятельности: {start_work2}\n'
-                                       f'\n'
-                                       f'15) Название должности: {dolg}\n'
-                                       f'\n'
-                                       f'16) Основной доход в месяц в рублях: {dohod}\n'
-                                       f'\n'
-                                       f'17) Дополнительный доход в месяц: {dohod2}\n'
-                                       f'\n'
-                                       f'18) Сумма выплат на  погашение кредитов: {credit}\n'
-                                       f'\n'
-                                       f'19) Сколько кредитных карт: {credit_card}\n'
-                                       f'\n'
-                                       f'20) Месячный лимит каждой карты через запятую: {limi}\n'
-                                       f'\n'
-                                       f'21) Автомобиль\и: {car}\n'
-                                       f'\n'
-                                       f'22) Недвижимость\и: {cob}')
-        if card == "vvesti":
-            await bot.send_message(config.ADMIN, "Карточка компании\n"
-                                       "\n"
-                                       f"1) Полное наименование компании: {name}\n"
-                                  f"\n"
-                                  f"2) Фактический адрес компании: {adres_company}\n"
-                                  f"\n"
-                                  f"3) Сколько лет компания на рынке: {years}\n"
-                                  f"\n"
-                                  f"4) Сайт компании: {sait}\n"
-                                  f"\n"
-                                  f"5) Номер телефона компании: {number_com}\n"
-                                  f"\n"
-                                  f"6) Численность персонала: {count}\n"
-                                  f"\n"
-                                  f"7) Отраслевая сфера компании: {cfera}\n"
-                                  f"___________________________")
-        await bot.send_message(config.ADMIN, f'1) Способ подтверждения дохода: {pay_d}\n'
-                                   f'\n'
-                                   f'2) Адрес фактического проживания: {adres}\n'
-                                   f'\n'
-                                   f'3) Проживаете по этому адресу: {time_live}\n'
-                                   f'\n'
-                                   f'4) Основание проживания: {osnovanie}\n'
-                                   f'\n'
-                                   f'5) Образование: {education}\n'
-                                   f'\n'
-                                   f'6) Семейное положение: {family}\n'
-                                   f'\n'
-                                   f'7) Брачный контракт: {brak}\n'
-                                   f'\n'
-                                   f'8) Социальный статус супруга(-и): {cosual}\n'
-                                   f'\n'
-                                   f'9) Электронная почта: {e_mail}\n'
-                                   f'\n'
-                                   f'10) Номер телефона: {phone_number}\n'
-                                   f'\n'
-                                   f'11) Номер СНИЛС: {cnulc}\n'
-                                   f'\n'
-                                   f'12) Тип занятости: {zan}\n'
-                                   f'\n'
-                                   f'13) Дата начала работы в указанной организации: {start_work}\n'
-                                   f'\n'
-                                   f'14) Дата начала своей трудовой деятельности: {start_work2}\n'
-                                   f'\n'
-                                   f'15) Название должности: {dolg}\n'
-                                   f'\n'
-                                   f'16) Основной доход в месяц в рублях: {dohod}\n'
-                                   f'\n'
-                                   f'17) Дополнительный доход в месяц: {dohod2}\n'
-                                   f'\n'
-                                   f'18) Сумма выплат на  погашение кредитов: {credit}\n'
-                                   f'\n'
-                                   f'19) Сколько кредитных карт: {credit_card}\n'
-                                   f'\n'
-                                   f'20) Месячный лимит каждой карты через запятую: {limi}\n'
-                                   f'\n'
-                                   f'21) Автомобиль\и: {car}\n'
-                                   f'\n'
-                                   f'22) Недвижимость\и: {cob}')
+            files = os.listdir(f'images{ud}')
+            for i in files:
+                await bot.send_message(config.CHANNEL_ID, 'Фото паспорта:')
+                photo = open(f'images{ud}/{i}', 'rb')
+                await bot.send_photo(config.CHANNEL_ID, photo)
+            await bot.send_message(config.CHANNEL_ID, '___________________________\n')
+            if card == "document":
+                file = os.listdir(f'card{ud}')
+                for i in file:
+                    photo = open(f'card{ud}/{i}', 'rb')
+                    await bot.send_message(config.CHANNEL_ID, 'Карточка компании:')
+                    await bot.send_photo(config.CHANNEL_ID, photo)
+                    await bot.send_message(config.CHANNEL_ID, '___________________________\n')
+                    await bot.send_message(config.CHANNEL_ID, f'1) Способ подтверждения дохода: {pay_d}\n'
+                                        f'\n'
+                                        f'2) Адрес фактического проживания: {adres}\n'
+                                        f'\n'
+                                        f'3) Проживаете по этому адресу: {time_live}\n'
+                                        f'\n'
+                                        f'4) Основание проживания: {osnovanie}\n'
+                                        f'\n'
+                                        f'5) Образование: {education}\n'
+                                        f'\n'
+                                        f'6) Семейное положение: {family}\n'
+                                        f'\n'
+                                        f'7) Брачный контракт: {brak}\n'
+                                        f'\n'
+                                        f'8) Социальный статус супруга(-и): {cosual}\n'
+                                        f'\n'
+                                        f'9) Электронная почта: {e_mail}\n'
+                                        f'\n'
+                                        f'10) Номер телефона: {phone_number}\n'
+                                        f'\n'
+                                        f'11) Номер СНИЛС: {cnulc}\n'
+                                        f'\n'
+                                        f'12) Тип занятости: {zan}\n'
+                                        f'\n'
+                                        f'13) Дата начала работы в указанной организации: {start_work}\n'
+                                        f'\n'
+                                        f'14) Дата начала своей трудовой деятельности: {start_work2}\n'
+                                        f'\n'
+                                        f'15) Название должности: {dolg}\n'
+                                        f'\n'
+                                        f'16) Основной доход в месяц в рублях: {dohod}\n'
+                                        f'\n'
+                                        f'17) Дополнительный доход в месяц: {dohod2}\n'
+                                        f'\n'
+                                        f'18) Сумма выплат на  погашение кредитов: {credit}\n'
+                                        f'\n'
+                                        f'19) Сколько кредитных карт: {credit_card}\n'
+                                        f'\n'
+                                        f'20) Месячный лимит каждой карты через запятую: {limi}\n'
+                                        f'\n'
+                                        f'21) Автомобиль\и: {car}\n'
+                                        f'\n'
+                                        f'22) Недвижимость\и: {cob}')
+            if card == "vvesti":
+                await bot.send_message(config.CHANNEL_ID, "Карточка компании\n"
+                                        "\n"
+                                        f"1) Полное наименование компании: {name}\n"
+                                    f"\n"
+                                    f"2) Фактический адрес компании: {adres_company}\n"
+                                    f"\n"
+                                    f"3) Сколько лет компания на рынке: {years}\n"
+                                    f"\n"
+                                    f"4) Сайт компании: {sait}\n"
+                                    f"\n"
+                                    f"5) Номер телефона компании: {number_com}\n"
+                                    f"\n"
+                                    f"6) Численность персонала: {count}\n"
+                                    f"\n"
+                                    f"7) Отраслевая сфера компании: {cfera}\n"
+                                    f"___________________________")
+            await bot.send_message(config.CHANNEL_ID, f'1) Способ подтверждения дохода: {pay_d}\n'
+                                    f'\n'
+                                    f'2) Адрес фактического проживания: {adres}\n'
+                                    f'\n'
+                                    f'3) Проживаете по этому адресу: {time_live}\n'
+                                    f'\n'
+                                    f'4) Основание проживания: {osnovanie}\n'
+                                    f'\n'
+                                    f'5) Образование: {education}\n'
+                                    f'\n'
+                                    f'6) Семейное положение: {family}\n'
+                                    f'\n'
+                                    f'7) Брачный контракт: {brak}\n'
+                                    f'\n'
+                                    f'8) Социальный статус супруга(-и): {cosual}\n'
+                                    f'\n'
+                                    f'9) Электронная почта: {e_mail}\n'
+                                    f'\n'
+                                    f'10) Номер телефона: {phone_number}\n'
+                                    f'\n'
+                                    f'11) Номер СНИЛС: {cnulc}\n'
+                                    f'\n'
+                                    f'12) Тип занятости: {zan}\n'
+                                    f'\n'
+                                    f'13) Дата начала работы в указанной организации: {start_work}\n'
+                                    f'\n'
+                                    f'14) Дата начала своей трудовой деятельности: {start_work2}\n'
+                                    f'\n'
+                                    f'15) Название должности: {dolg}\n'
+                                    f'\n'
+                                    f'16) Основной доход в месяц в рублях: {dohod}\n'
+                                    f'\n'
+                                    f'17) Дополнительный доход в месяц: {dohod2}\n'
+                                    f'\n'
+                                    f'18) Сумма выплат на  погашение кредитов: {credit}\n'
+                                    f'\n'
+                                    f'19) Сколько кредитных карт: {credit_card}\n'
+                                    f'\n'
+                                    f'20) Месячный лимит каждой карты через запятую: {limi}\n'
+                                    f'\n'
+                                    f'21) Автомобиль\и: {car}\n'
+                                    f'\n'
+                                    f'22) Недвижимость\и: {cob}')
 
 
-        if card != "vvesti" and card != 'document':
-            await bot.send_message(config.ADMIN, f"Карточка компании: {card}"
-                                                     f"___________________________")
-            await bot.send_message(config.ADMIN, f'1) Способ подтверждения дохода: {pay_d}\n'
-                                       f'\n'
-                                       f'2) Адрес фактического проживания: {adres}\n'
-                                       f'\n'
-                                       f'3) Проживаете по этому адресу: {time_live}\n'
-                                       f'\n'
-                                       f'4) Основание проживания: {osnovanie}\n'
-                                       f'\n'
-                                       f'5) Образование: {education}\n'
-                                       f'\n'
-                                       f'6) Семейное положение: {family}\n'
-                                       f'\n'
-                                       f'7) Брачный контракт: {brak}\n'
-                                       f'\n'
-                                       f'8) Социальный статус супруга(-и): {cosual}\n'
-                                       f'\n'
-                                       f'9) Электронная почта: {e_mail}\n'
-                                       f'\n'
-                                       f'10) Номер телефона: {phone_number}\n'
-                                       f'\n'
-                                       f'11) Номер СНИЛС: {cnulc}\n'
-                                       f'\n'
-                                       f'12) Тип занятости: {zan}\n'
-                                       f'\n'
-                                       f'13) Дата начала работы в указанной организации: {start_work}\n'
-                                       f'\n'
-                                       f'14) Дата начала своей трудовой деятельности: {start_work2}\n'
-                                       f'\n'
-                                       f'15) Название должности: {dolg}\n'
-                                       f'\n'
-                                       f'16) Основной доход в месяц в рублях: {dohod}\n'
-                                       f'\n'
-                                       f'17) Дополнительный доход в месяц: {dohod2}\n'
-                                       f'\n'
-                                       f'18) Сумма выплат на  погашение кредитов: {credit}\n'
-                                       f'\n'
-                                       f'19) Сколько кредитных карт: {credit_card}\n'
-                                       f'\n'
-                                       f'20) Месячный лимит каждой карты через запятую: {limi}\n'
-                                       f'\n'
-                                       f'21) Автомобиль\и: {car}\n'
-                                       f'\n'
-                                       f'22) Недвижимость\и: {cob}')
-
-
-
+            if card != "vvesti" and card != 'document':
+                await bot.send_message(config.CHANNEL_ID, f"Карточка компании: {card}"
+                                                        f"___________________________")
+                await bot.send_message(config.CHANNEL_ID, f'1) Способ подтверждения дохода: {pay_d}\n'
+                                        f'\n'
+                                        f'2) Адрес фактического проживания: {adres}\n'
+                                        f'\n'
+                                        f'3) Проживаете по этому адресу: {time_live}\n'
+                                        f'\n'
+                                        f'4) Основание проживания: {osnovanie}\n'
+                                        f'\n'
+                                        f'5) Образование: {education}\n'
+                                        f'\n'
+                                        f'6) Семейное положение: {family}\n'
+                                        f'\n'
+                                        f'7) Брачный контракт: {brak}\n'
+                                        f'\n'
+                                        f'8) Социальный статус супруга(-и): {cosual}\n'
+                                        f'\n'
+                                        f'9) Электронная почта: {e_mail}\n'
+                                        f'\n'
+                                        f'10) Номер телефона: {phone_number}\n'
+                                        f'\n'
+                                        f'11) Номер СНИЛС: {cnulc}\n'
+                                        f'\n'
+                                        f'12) Тип занятости: {zan}\n'
+                                        f'\n'
+                                        f'13) Дата начала работы в указанной организации: {start_work}\n'
+                                        f'\n'
+                                        f'14) Дата начала своей трудовой деятельности: {start_work2}\n'
+                                        f'\n'
+                                        f'15) Название должности: {dolg}\n'
+                                        f'\n'
+                                        f'16) Основной доход в месяц в рублях: {dohod}\n'
+                                        f'\n'
+                                        f'17) Дополнительный доход в месяц: {dohod2}\n'
+                                        f'\n'
+                                        f'18) Сумма выплат на  погашение кредитов: {credit}\n'
+                                        f'\n'
+                                        f'19) Сколько кредитных карт: {credit_card}\n'
+                                        f'\n'
+                                        f'20) Месячный лимит каждой карты через запятую: {limi}\n'
+                                        f'\n'
+                                        f'21) Автомобиль\и: {car}\n'
+                                        f'\n'
+                                        f'22) Недвижимость\и: {cob}')
 
 
 
@@ -1083,7 +1137,7 @@ async def op(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = message.text
     db.add_name(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил карточку компании пункт 1 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил карточку компании пункт 1 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text), disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1092,7 +1146,7 @@ async def sd(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = message.text
     db.add_adres_company(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил карточку компании пункт 2 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил карточку компании пункт 2 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text), disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1101,7 +1155,7 @@ async def sd(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     db.add_years(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил карточку компании пункт 3 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил карточку компании пункт 3 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text), disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1110,7 +1164,7 @@ async def sd(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     db.add_saits(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил карточку компании пункт 4 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил карточку компании пункт 4 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text), disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1119,7 +1173,7 @@ async def sd(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     db.add_number_com(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил карточку компании пункт 5 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил карточку компании пункт 5 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text), disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1128,7 +1182,7 @@ async def sd(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     db.add_count(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил карточку компании пункт 6 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил карточку компании пункт 6 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text), disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1137,7 +1191,7 @@ async def sd(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     db.add_cfera(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил карточку компании пункт 7 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил карточку компании пункт 7 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text), disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1263,7 +1317,7 @@ async def op(message: types.Message, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "2-НДФЛ"
     db.add_pay_d(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 1 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 1 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1272,7 +1326,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Выписка из ПФР"
     db.add_pay_d(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 1 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 1 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1281,7 +1335,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Налоговая декларация"
     db.add_pay_d(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 1 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 1 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1290,7 +1344,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Справка о размере пенсии"
     db.add_pay_d(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 1 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 1 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1299,7 +1353,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Справка по форме банка"
     db.add_pay_d(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 1 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 1 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1308,7 +1362,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Выписка из похозяйственной книги"
     db.add_pay_d(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={})анкету пункт 1 на {}'.format(call.from_user.first_name,call.from_user.last_name,call.from_user.id,vybor))
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={})анкету пункт 1 на {}'.format(call.from_user.first_name,call.from_user.last_name,call.from_user.id,vybor))
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
 
@@ -1316,7 +1370,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Без подтверждения"
     db.add_pay_d(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 1 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 1 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1326,7 +1380,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def photo(message: types.Message, state: FSMContext):
     text = message.text
     db.add_adres(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 2 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 2 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(message.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1337,7 +1391,7 @@ async def photo(message: types.Message, state: FSMContext):
 async def photo(message: types.Message, state: FSMContext):
     text = message.text
     db.add_time_live(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 3 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 3 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(message.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1348,7 +1402,7 @@ async def photo(message: types.Message, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Собственность"
     db.add_osnovanie(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 4 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 4 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1357,7 +1411,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Социальный найм"
     db.add_osnovanie(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 4 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 4 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1366,7 +1420,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Аренда"
     db.add_osnovanie(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 4 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 4 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1375,7 +1429,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Воинская часть"
     db.add_osnovanie(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 4 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 4 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1384,7 +1438,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Жильё родственников"
     db.add_osnovanie(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 4 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 4 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1393,7 +1447,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Коммунальная квартира"
     db.add_osnovanie(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 4 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 4 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1405,7 +1459,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Ученая степень"
     db.add_education(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1414,7 +1468,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Два высших и более"
     db.add_education(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1423,7 +1477,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Высшее"
     db.add_education(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1432,7 +1486,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Неоконченное высшее"
     db.add_education(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1441,7 +1495,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Среднее специальное"
     db.add_education(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1450,7 +1504,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Среднее"
     db.add_education(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1459,7 +1513,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Ниже среднего"
     db.add_education(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1468,7 +1522,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Российское МВА"
     db.add_education(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1477,7 +1531,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Иностранное МВА"
     db.add_education(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 5 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1487,7 +1541,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Женат/замужем"
     db.add_family(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 6 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 6 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1496,7 +1550,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Гражданский брак"
     db.add_family(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 6 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 6 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1507,7 +1561,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     db.add_family(call.from_user.id, vybor)
     db.add_brak(call.from_user.id, "Супруга/и нет")
     db.add_cosual(call.from_user.id, "Супруга/и нет")
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 6 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 6 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1519,7 +1573,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     db.add_family(call.from_user.id, vybor)
     db.add_brak(call.from_user.id, "Супруга/и нет")
     db.add_cosual(call.from_user.id, "Супруга/и нет")
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 6 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 6 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1530,7 +1584,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     db.add_family(call.from_user.id, vybor)
     db.add_brak(call.from_user.id, "Супруга/и нет")
     db.add_cosual(call.from_user.id, "Супруга/и нет")
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 6 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 6 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1540,7 +1594,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Есть"
     db.add_brak(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 7 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 7 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1549,7 +1603,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Нет"
     db.add_brak(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 7 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 7 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1558,7 +1612,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Будет заключен до сделки"
     db.add_brak(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 7 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 7 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1568,7 +1622,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Работает"
     db.add_cosual(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 7 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 7 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1577,7 +1631,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Не работает"
     db.add_cosual(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 8 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 8 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1586,7 +1640,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "На пенсии"
     db.add_cosual(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 8 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 8 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1596,7 +1650,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def photo(message: types.Message, state: FSMContext):
     text = message.text
     db.add_e_mail(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 9 на {}'.format(message
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 9 на {}'.format(message
         .from_user.first_name, message.from_user.last_name, message.from_user.id, text), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(message.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1606,7 +1660,7 @@ async def photo(message: types.Message, state: FSMContext):
 async def photo(message: types.Message, state: FSMContext):
     text = message.text
     db.add_phone_number(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 10 на {}'.format(message
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 10 на {}'.format(message
         .from_user.first_name, message.from_user.last_name, message.from_user.id, text), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(message.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1615,7 +1669,7 @@ async def photo(message: types.Message, state: FSMContext):
 async def photo(message: types.Message, state: FSMContext):
     text = message.text
     db.add_cnulc(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 11 на {}'.format(message
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 11 на {}'.format(message
         .from_user.first_name, message.from_user.last_name, message.from_user.id, text), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(message.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1625,7 +1679,7 @@ async def photo(message: types.Message, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Коммерческая"
     db.add_zan(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 12 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 12 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1634,7 +1688,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Бюджетная"
     db.add_zan(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 12 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 12 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1643,7 +1697,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Свой бизнес"
     db.add_zan(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 12 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 12 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1652,7 +1706,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "По найму"
     db.add_zan(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 12 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 12 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1661,7 +1715,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "Пенсионер"
     db.add_zan(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 12 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 12 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1670,7 +1724,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def anketa_start(call: types.CallbackQuery, state: FSMContext):
     vybor = "ИП"
     db.add_zan(call.from_user.id, vybor)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 12 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 12 на {}'.format(
         call.from_user.first_name, call.from_user.last_name, call.from_user.id, vybor), disable_web_page_preview=True, parse_mode="Markdown")
     await bot.send_message(call.from_user.id, 'Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1681,7 +1735,7 @@ async def anketa_start(call: types.CallbackQuery, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     db.add_start_work(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 13 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 13 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text), disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
     await state.finish()
@@ -1690,7 +1744,7 @@ async def sd(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     db.add_start_work2(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 14 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 14 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text),
                            disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
@@ -1700,7 +1754,7 @@ async def sd(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     db.add_dolg(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 15 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 15 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text),
                            disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
@@ -1711,7 +1765,7 @@ async def sd(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     db.add_dohod(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 16 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 16 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text),
                            disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
@@ -1721,7 +1775,7 @@ async def sd(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     db.add_dohod2(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 17 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 17 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text),
                            disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
@@ -1733,7 +1787,7 @@ async def sd(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     db.add_credit(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 18 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 18 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text),
                            disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
@@ -1744,7 +1798,7 @@ async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     if text.title() == "нет":
         db.add_credit_card(message.from_user.id, "нет")
-        await bot.send_message(config.ADMIN,
+        await bot.send_message(config.CHANNEL_ID,
                                'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 19 на {}'.format(
                                    message.from_user.first_name, message.from_user.last_name, message.from_user.id,
                                    text),
@@ -1753,7 +1807,7 @@ async def sd(message: types.Message, state: FSMContext):
         await state.finish()
     else:
         db.add_credit_card(message.from_user.id, text)
-        await bot.send_message(config.ADMIN,
+        await bot.send_message(config.CHANNEL_ID,
                                'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 19 на {}'.format(
                                    message.from_user.first_name, message.from_user.last_name, message.from_user.id,
                                    text),
@@ -1765,7 +1819,7 @@ async def sd(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     db.add_limi(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 20 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 20 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text),
                            disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
@@ -1775,7 +1829,7 @@ async def sd(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     db.add_car(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 21 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 21 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text),
                            disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
@@ -1786,7 +1840,7 @@ async def sd(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     db.add_cob(message.from_user.id, text)
-    await bot.send_message(config.ADMIN, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 22 на {}'.format(
+    await bot.send_message(config.CHANNEL_ID, 'Пользователь: [{} {}](tg://user?id={}) изменил анкету пункт 22 на {}'.format(
         message.from_user.first_name, message.from_user.last_name, message.from_user.id, text),
                            disable_web_page_preview=True, parse_mode="Markdown")
     await message.answer('Анкета изменена', reply_markup=mp.fin)
