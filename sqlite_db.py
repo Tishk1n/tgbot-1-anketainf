@@ -15,7 +15,6 @@ class Database:
         with self.connection:
             return self.connection.execute("INSERT INTO users ('user_id') VALUES (?)", (user_id,))
 
-
     # _____________________________Активация анкеты_________________________--
 
     def user_anketa(self, user_id):
