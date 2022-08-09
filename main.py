@@ -667,7 +667,7 @@ async def sd(message: types.Message, state: FSMContext):
 async def sd(message: types.Message, state: FSMContext):
     text = str(message.text)
     db.add_cob(message.from_user.id, text)
-    await message.answer('Анкета готова', reply_markup=mp.fin)
+    await message.answer('Анкета готова! Нажми на кнопку чтобы отправить анкету.', reply_markup=mp.fin)
     await state.finish()
 
 @dp.callback_query_handler(text=['prinyal'])

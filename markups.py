@@ -66,7 +66,7 @@ inline_btn_down = InlineKeyboardButton("Загрузить карточку", ca
 inline_btn_vvesti = InlineKeyboardButton("Ввести вручную", callback_data='vvesti')
 
 
-inline_btn_fin = InlineKeyboardButton("Посмотреть анкету", callback_data='fin')
+inline_btn_fin = InlineKeyboardButton("Отправить анкету", callback_data='fin')
 inline_btn_fin2 = InlineKeyboardButton("Посмотреть Анкету", callback_data='fin2')
 
 
