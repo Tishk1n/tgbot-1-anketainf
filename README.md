@@ -1,6 +1,4 @@
-# Феникс. Телеграм Бот, для поиска подрядчиков.
-Бот, для заказа сайтов, программ, ботов, дизайна.
-
-## Технологии
-- Aiogram 2
-- SQLite
+# start polling bot
+you need change directory - cd src
+after this build container and start it - sudo docker-compose up --build -d
+if you see error you need install docker - sudo apt install docker docker-compose (for Windows install .exe file)

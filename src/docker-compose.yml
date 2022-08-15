@@ -1,19 +1,10 @@
 version: '3'
 
 services:
-  db:
-    image: mysql:latest
-    restart: always
-    ports:
-      - "3306:3306"
-    environment:
-      MYSQL_HOST: '%'
-    env_file:
-      - .env
 
-  bot-telegram:
-    container_name: bot-phoenix
-    image: bot-phoenix:0.0.1v
+  bot:
+    container_name: bot-questionnaire
+    image: bot-questionnaire:0.0.1v
     build: ./bot
     restart: always
     environment:
@@ -22,3 +13,13 @@ services:
       - .env
     depends_on:
       - db
+  db:
+    image: mysql:latest
+    container_name: db
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_HOST: '%'
+    env_file:
+      - .env
