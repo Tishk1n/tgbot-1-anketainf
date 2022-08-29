@@ -3,7 +3,7 @@ version: '3'
 services:
 
   bot:
-    container_name: bot-questionnaire
+    container_name: anketabot
     image: bot-questionnaire:0.0.1v
     build: ./bot
     restart: always
