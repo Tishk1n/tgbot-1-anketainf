@@ -23,6 +23,6 @@ def main(token: str):
 def _asyncio_database_init() -> None:
     loop = new_event_loop()
     set_event_loop(loop)
-    db_url = f'mysql://{getenv("MYSQL_USER")}:{getenv("MYSQL_PASSWORD")}@{getenv("MYSQL_HOST")}/{getenv("MYSQL_DATABASE")}'
+    db_url = f'mysql://{getenv("MYSQL_USER")}:{getenv("MYSQL_PASSWORD")}@{getenv("MYSQL_HOST")}:{getenv("MYSQL_PORT")}/{getenv("MYSQL_DATABASE")}'
     loop.run_until_complete(database_init(db_url=db_url))
     logging.info('run database')
