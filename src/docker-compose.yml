@@ -12,8 +12,8 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
-  db:
+      - db-quests
+  db-quests:
     image: mysql:latest
     container_name: db-quests
     restart: always
