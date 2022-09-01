@@ -8,7 +8,7 @@ services:
     build: ./bot
     restart: always
     environment:
-      MYSQL_HOST: db
+      MYSQL_HOST: db-quests
     env_file:
       - .env
     depends_on:
