@@ -16,6 +16,8 @@ class AlbumMiddleware(BaseMiddleware):
 
     async def on_process_message(self, message: Message, data: dict):
         if not message.media_group_id:
+            if message.photo:
+                data['album'] = [message]
             return
 
         try:
