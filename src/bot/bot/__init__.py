@@ -8,6 +8,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils import executor
 
 from bot.handlers import register_handlers
+from bot.middlewares import register_middlewares
 from bot.rules import register_rules
 
 
@@ -15,6 +16,7 @@ def main(token: str):
     _asyncio_database_init()
     bot = Bot(token)
     dp = Dispatcher(bot, storage=MemoryStorage())
+    register_middlewares(dp)
     register_rules(dp)
     register_handlers(dp)
     executor.start_polling(dp, skip_updates=True)

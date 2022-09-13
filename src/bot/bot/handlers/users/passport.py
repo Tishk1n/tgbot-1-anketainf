@@ -1,4 +1,4 @@
-import asyncio
+from typing import List
 
 from aiogram import Dispatcher
 from aiogram.dispatcher import FSMContext
@@ -29,11 +29,12 @@ async def begin_write_questionnaire(call: CallbackQuery, state: FSMContext) -> N
     await call.message.answer('Вы уже заполнили свою анкету')
 
 
-async def get_photo_passport(message: Message, state: FSMContext) -> None:
+async def get_photo_passport(message: Message, state: FSMContext, album: List[Message]) -> None:
     info = await state.get_data()
     photos: list[str] = info['photos'] if info.get('photos') else []
-    url: str = await message.photo[-1].get_url()
-    photos.append(url)
+    for obj in album:
+        url: str = await obj.photo[-1].get_url()
+        photos.append(url)
     await state.update_data(photos=photos)
     await message.answer('Фото сохранено')
 
